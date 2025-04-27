@@ -1,39 +1,39 @@
 public class Cell{
     private int value;
     private boolean initialState;
-    private int[] domain;
+    private int[] domain; 
 
     public Cell(int value, boolean initialState) {
         this.value = value;
         this.initialState = initialState;
-        this.domain = new int[10]; // The domain is 0 to 9
-        // Initializing the domain values
-        if (initialState) {
-            // If the cell is initialState in the initial state, then its domain will ONLY be that value
+        this.domain = new int[10]; 
+
+        if (initialState && value != -1) { 
             for (int i = 0; i < 10; i++) {
                 domain[i] = (i == value) ? 1 : 0;
             }
         } else {
-            // If the cell is not initialState, then its domain is all possible values
+
+             this.initialState = false; 
+             this.value = -1; 
             for (int i = 0; i < 10; i++) {
                 domain[i] = 1;
             }
         }
     }
-    
+
     public void restartDomain()
     {
-        if (initialState) {
-            // If the cell is initialState in the initial state, then its domain will ONLY be that value
+        if (this.initialState && this.value != -1) {
             for (int i = 0; i < 10; i++) {
-                domain[i] = (i == value) ? 1 : 0;
+                domain[i] = (i == this.value) ? 1 : 0;
             }
         } else {
-            // If the cell is not initialState, then its domain is all possible values
+
             for (int i = 0; i < 10; i++) {
                 domain[i] = 1;
             }
-        }      
+        }
     }
 
     public int getValue() {
@@ -42,15 +42,25 @@ public class Cell{
 
     public void setValue(int value) {
         this.value = value;
+
     }
 
     public boolean isInitialState() {
         return initialState;
     }
 
-    public void setGivenInInitialState(boolean initialState) {
+    public void setInitialState(boolean initialState) {
         this.initialState = initialState;
+
+        if (initialState && this.value != -1) {
+             restartDomain(); 
+        }
     }
+
+    public void setAsAssignedValue() {
+        this.initialState = false;
+    }
+
 
     public int[] getDomain() {
         return domain;
@@ -62,44 +72,36 @@ public class Cell{
 
     public void updateDomain(int value, boolean possible)
     {
-        // Update the domain values after assigning a value be row
-        if(possible)
-        {
-        for (int i = 0; i < 10; i++) {
-            if (i == value) 
-                domain[i] = 1; 
-        }
-        }
-        else// this value is not possible in domain
-        {
-        for (int i = 0; i < 10; i++) 
-           {
-            if (i == value) 
-                domain[i] = 0; 
-            }
+        if (value >= 0 && value < 10) {
+             domain[value] = possible ? 1 : 0;
         }
     }
-   
+
     public boolean isDomainEmpty() {
-        // Check if the domain is empty
         for (int i = 0; i < 10; i++) {
             if (domain[i] == 1) {
-                return false; 
+                return false;
             }
         }
-        return true; 
+        return true;
     }
+
+     public boolean isValueInDomain(int value) {
+        if (value >= 0 && value < 10) {
+             return domain[value] == 1;
+        }
+        return false;
+    }
+
 
     public int getSizeOfAvailableDomain()
     {
         int availableDomain=0;
         for (int i = 0; i < 10; i++) {
                 if (domain[i]==1) {
-                    availableDomain++;          
+                    availableDomain++;
             }
         }
         return availableDomain;
     }
-
-
-}//Celle Class
+}
