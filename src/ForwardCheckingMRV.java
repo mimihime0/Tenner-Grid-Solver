@@ -1,301 +1,156 @@
+import java.util.*;
+
 public class ForwardCheckingMRV {
 
-    // static Long assignmentCounter=0L;
-     // static Long consistencyCounter=0L;
- 
-     static double assignmentCounter=0;
-     static double consistencyCounter=0;
-     static boolean possibleInDomain=true; 
- 
-    
-     public static boolean forwardCheckingMRV() {
-         if (isAssignmentComplete()) {
-             System.out.println(" Number of variable assignments: "+assignmentCounter);
-             System.out.println(" Number of consistency checks: "+consistencyCounter);
-             
-             return true; 
-         }
-  
-         int[] rowAndColumn = selectMRVVariable();
-         int rowIndex = rowAndColumn[0];
-         int columnIndex = rowAndColumn[1];
- 
- 
-         for (int value = 0; value < 10; value++) {        
-             if (TennerGrid.grid[rowIndex][columnIndex].getDomain()[value] == 1)
-             {            
-             if (valueIsConsistent(value, rowIndex, columnIndex) && forwardChecking(value, rowIndex, columnIndex)) 
-             {
-                 TennerGrid.grid[rowIndex][columnIndex].setValue(value);
-                 TennerGrid.grid[rowIndex][columnIndex].setGivenInInitialState(false); 
-                 assignmentCounter++;
- 
-                 if (forwardCheckingMRV()) {
-                     return true; 
-                 }else
-                 {
-                 TennerGrid.grid[rowIndex][columnIndex].setValue(-1); 
-                 updateDomainForAllCells(value, rowIndex, columnIndex, possibleInDomain);
- 
-                 }
+    private long assignmentCounter = 0L; 
+    private long consistencyCounter = 0L; 
+    private Cell[][] grid;
+
+    public void resetCounters() {
+        assignmentCounter = 0L;
+        consistencyCounter = 0L;
+    }
+
+    public long getAssignmentCount() {
+        return assignmentCounter;
+    }
+
+    public long getConsistencyCount() {
+        return consistencyCounter;
+    }
+
+    public boolean solve(Cell[][] grid) {
+        this.grid = grid;
+        resetCounters();
+
+        for (int i = 0; i < 2; i++) {
+             for(int j = 0; j < 10; j++) {
+                 grid[i][j].restartDomain();
              }
-         }
-         }
-         
-         
- 
- 
-         return false; // Failure
-     }
- 
-     private static boolean isAssignmentComplete() {
-         for (int i = 0; i < 2; i++) {
-             for (int j = 0; j <10 ; j++) {
-                 if (TennerGrid.grid[i][j].getValue() == -1) {
-                     return false; // Found unassigned cell
-                 }
-             }
-         }
-         return true; // All cells are assigned
-     }
- 
-     private static int[] selectMRVVariable() {
-         int[] rowAndColumn=new int[2];
- 
-         //find cell that either above it or bellow it has another cell so we change the doamin to be 
-         for (int i = 0; i < 2; i++) {
-             for (int j = 0; j < 10; j++) {
-                 if (TennerGrid.grid[i][j].getValue() == -1 )
-                 {
-                    if (i==0 && TennerGrid.grid[i+1][j].isInitialState() )
-                     {
-                    rowAndColumn[0]=i;
-                    rowAndColumn[1]=j;
-                    return rowAndColumn;
-                    }else if(i==1 && TennerGrid.grid[i-1][j].isInitialState())
-                    {                 
-                     rowAndColumn[0]=i;
-                     rowAndColumn[1]=j;
-                     return rowAndColumn;                  
+        }
+        return forwardCheckingMRVRecursive();
+    }
+
+    private boolean forwardCheckingMRVRecursive() {
+        if (isAssignmentComplete()) {
+            return true;
+        }
+
+        int[] rowAndColumn = selectMRVVariable();
+        if (rowAndColumn == null) return isAssignmentComplete();
+
+        int r = rowAndColumn[0];
+        int c = rowAndColumn[1];
+
+        for (int value = 0; value < 10; value++) {
+             if (grid[r][c].isValueInDomain(value)) {
+
+                grid[r][c].setValue(value);
+                assignmentCounter++;
+
+                List<int[]> prunedDomains = pruneDomains(r, c, value);
+
+                if (prunedDomains != null) {
+
+                    if (forwardCheckingMRVRecursive()) {
+                        return true;
                     }
-                 }
-             }
-         }
-         //choose varible with smallest domain
-         
-         int sizeOfDomain=10;
- 
-         for (int i = 0; i < 2; i++) {
-             for (int j = 0; j < 10; j++) {
-                 if (TennerGrid.grid[i][j].getValue()==-1 && TennerGrid.grid[i][j].getSizeOfAvailableDomain() <sizeOfDomain) {
-                     rowAndColumn[0]=i;
-                     rowAndColumn[1]=j;
-                     sizeOfDomain=TennerGrid.grid[i][j].getSizeOfAvailableDomain();     
-                 }
-             }
-         }
-         return rowAndColumn; 
-     }//selectMRVVariable
-     private static boolean valueIsConsistent(int value, int rowIndex, int columnIndex ) {
- 
-         if (isRowConsistent(value, rowIndex,columnIndex )
-         &&  isDiagonalConsistent(value, rowIndex, columnIndex)
-         &&  isSumConsistent(value, rowIndex, columnIndex)) {
-             return true;
-         }
-         return false;
-     }
- 
-     private static boolean isRowConsistent(int value, int rowIndex, int columnIndex ) {
- 
-         // Check row constraint
-         for (int column = 0; column < 10; column++) {
-             consistencyCounter++;
-             if (column != columnIndex && TennerGrid.grid[rowIndex][column].getValue() == value) {
-                 return false; // Value violates row constraint
-             }
-         }
-         return true;
-     }
- 
- 
- 
-     private static boolean isDiagonalConsistent(int value, int rowIndex, int columnIndex ) {
-         consistencyCounter++;
- 
-         int temp1 = columnIndex-1;
-         int temp2 = columnIndex+1;
-         for(int k = rowIndex-1;k >= 0;k--)//diagonal check
-         {
-             if(temp1 <= 9 && temp1 >= 0)
-             {
-                 consistencyCounter++;
-                 if(value == TennerGrid.grid[k][temp1].getValue())
-                     return false;
-             }     
-             if(temp2 <= 9 && temp2 >= 0)
-             {
-                 consistencyCounter++;
-                 if(value == TennerGrid.grid[k][temp2].getValue())
-                     return false; 
-             }
-             temp1--;
-             temp2++;
-         }
-         temp1 = columnIndex-1;
-         temp2 = columnIndex+1;
-         for(int k = rowIndex+1;k < 2;k++)//diagonal check
-         {
-             if(temp1 <= 9 && temp1 >= 0)
-             {
-                 consistencyCounter++;
-                 if(value == TennerGrid.grid[k][temp1].getValue())
-                     return false;
-             }   
-             if(temp2 <= 9 && temp2 >= 0)
-             {
-                 consistencyCounter++;
-                 if(value == TennerGrid.grid[k][temp2].getValue())
-                     return false;
-             }
-             temp1--;
-             temp2++;
-         }
-         return true; // Placeholder for diagonal consistency check
-     }
-  
- 
-     private static boolean isSumConsistent(int value, int rowIndex, int columnIndex) {
-         consistencyCounter++;
- 
-         // Check if the value is not larger than the sum value
-         if (value > TennerGrid.grid[2][columnIndex].getValue()) {
-             consistencyCounter++;
-             return false;
-         }
-     
-         // Check the sum consistency based on the row index
-         else if (rowIndex == 0) {
-             // Check if the cell below is initialized
-             if (TennerGrid.grid[1][columnIndex].isInitialState() || TennerGrid.grid[1][columnIndex].getValue()!=-1) {
-                 consistencyCounter++;
-                 int sum = TennerGrid.grid[1][columnIndex].getValue() + value;
-                 return sum == TennerGrid.grid[2][columnIndex].getValue();
-             }
-         } else if (rowIndex == 1) {
-             // Check if the cell above is initialized
-             if (TennerGrid.grid[0][columnIndex].isInitialState()|| TennerGrid.grid[0][columnIndex].getValue()!=-1) {
-                 consistencyCounter++;
-                 int sum = TennerGrid.grid[0][columnIndex].getValue() + value;
-                 return sum == TennerGrid.grid[2][columnIndex].getValue();
-             }
-         }
-     
-         // If the conditions are not met, return true
-         return true;
-     }
-     
- 
-     
-     private static boolean forwardChecking(int value, int rowIndex, int columnIndex) {
-         // consistencyCounter++;
- 
-         updateDomainForAllCells(value, rowIndex, columnIndex, !possibleInDomain);
- 
-         if(allCellsHavePosibleDomains(value, rowIndex, columnIndex))
-         return true;
-         return false;
-     }
-    
- 
-     private static void updateDomainForAllCells(int value, int rowIndex, int columnIndex, boolean possibleInDomainOrNot)
-     {
-         //1)update domain for cells in the same row
-         for (int column = 0; column < 10; column++) //go through the row column by
-         TennerGrid.grid[rowIndex][column].updateDomain(value,possibleInDomainOrNot);
- 
- 
-         // 2)update domain for cells in the same diagonal to 0
-         
-         if(possibleInDomainOrNot == false)
-         {
-             if ((columnIndex == 0) && (rowIndex == 1)) 
-             TennerGrid.grid[0][1].updateDomain(value,possibleInDomainOrNot);
- 
-             else if ((columnIndex == 9) && (rowIndex == 0)) 
-             TennerGrid.grid[1][8].updateDomain(value,possibleInDomainOrNot);
- 
-             else if ((columnIndex == 0) && (rowIndex == 0)) 
-             TennerGrid.grid[1][1].updateDomain(value,possibleInDomainOrNot);
- 
-             else if ((columnIndex == 9) && (rowIndex == 1)) 
-             TennerGrid.grid[0][8].updateDomain(value,possibleInDomainOrNot);
-     
-            else if (rowIndex == 0) {
-                  TennerGrid.grid[1][columnIndex-1].updateDomain(value,possibleInDomainOrNot);
-                  TennerGrid.grid[1][columnIndex+1].updateDomain(value,possibleInDomainOrNot); 
-                 }
-             else if (rowIndex == 1) {
-                 TennerGrid.grid[0][columnIndex-1].updateDomain(value,possibleInDomainOrNot);
-                 TennerGrid.grid[0][columnIndex+1].updateDomain(value,possibleInDomainOrNot);
-         }
+                }
+
+                restoreDomains(prunedDomains);
+                grid[r][c].setValue(-1);
             }
-         // //3)update domain for cells in the same diagonal to 1, must cehck that it's row consitent
-         else if (possibleInDomainOrNot == true)
-         {
-             if ((columnIndex == 0) && (rowIndex == 1)                          
-             && isRowConsistent(value,0 ,1 )) 
- 
-             TennerGrid.grid[0][1].updateDomain(value,possibleInDomainOrNot);
- 
-             else if ((columnIndex == 9) && (rowIndex == 0)  && (rowIndex == 1) 
-             && isRowConsistent(value,1 ,8)) 
- 
-             TennerGrid.grid[1][8].updateDomain(value,possibleInDomainOrNot);
-             
-             else if ((columnIndex == 9) && (rowIndex == 1) && (rowIndex == 1)  
-             && isRowConsistent(value,0 ,8 )) 
-             TennerGrid.grid[0][8].updateDomain(value,possibleInDomainOrNot);
-     
-            else if (rowIndex == 0  && (rowIndex == 1)                          
-            && isRowConsistent(value,1 ,columnIndex-1 )&& isRowConsistent(value,1 ,columnIndex+1 )) 
-            {
-                  TennerGrid.grid[1][columnIndex-1].updateDomain(value,possibleInDomainOrNot);
-                  TennerGrid.grid[1][columnIndex+1].updateDomain(value,possibleInDomainOrNot); 
-              }
- 
-             else if (rowIndex == 1                                            
-             && isRowConsistent(value,0 ,columnIndex-1 ) && isRowConsistent(value,0 ,columnIndex+1 )) {
-                 TennerGrid.grid[0][columnIndex-1].updateDomain(value,possibleInDomainOrNot);
-                 TennerGrid.grid[0][columnIndex+1].updateDomain(value,possibleInDomainOrNot);
-         }
-         }
-     }
- 
-     private static boolean allCellsHavePosibleDomains(int value, int rowIndex, int columnIndex)
-     {
-         for (int i = 0; i < 2; i++) {
-             for (int j = 0; j < 10; j++) 
-             {
-                 if(  TennerGrid.grid[i][j].isDomainEmpty())
-                 return false;
-             }
-     }
-     return true;
- 
- }
- 
-     public static void printGrid() {
-         for (int i = 0; i < 3; i++) {
-             for (int j = 0; j < 10; j++) {
-                     System.out.print(TennerGrid.grid[i][j].getValue() + "\t");
+        }
+
+        return false; 
+    }
+
+
+    private int[] selectMRVVariable() {
+        int minDomainSize = 11; 
+        int[] mrvCell = null;
+
+        for (int i = 0; i < 2; i++) {
+            for (int j = 0; j < 10; j++) {
+                if (grid[i][j].getValue() == -1) { 
+                    int currentDomainSize = grid[i][j].getSizeOfAvailableDomain();
+                    if (currentDomainSize < minDomainSize) {
+                        minDomainSize = currentDomainSize;
+                        mrvCell = new int[]{i, j};
+                        if (minDomainSize <= 1) { 
+                             return mrvCell;
+                        }
+                    }
+                }
+            }
+        }
+        return mrvCell;
+    }
+
+
+    private List<int[]> pruneDomains(int r, int c, int value) {
+        List<int[]> prunedList = new ArrayList<>();
+        // 1- Row Constraint
+        for (int col = 0; col < 10; col++) {
+             if (col != c && grid[r][col].getValue() == -1) {
+                 if (grid[r][col].isValueInDomain(value)) {
+                     grid[r][col].updateDomain(value, false); prunedList.add(new int[]{r, col, value});
+                     consistencyCounter++; if (grid[r][col].isDomainEmpty()) return null;
                  }
-              
-             System.out.println();
+             }
+        }
+        // 2- Diagonal Constraint
+        int[] dRow = {-1, -1, 1, 1}; int[] dCol = {-1, 1, -1, 1};
+        for (int i = 0; i < dRow.length; i++) {
+            int nr = r + dRow[i]; int nc = c + dCol[i];
+            if (nr >= 0 && nr < 2 && nc >= 0 && nc < 10 && grid[nr][nc].getValue() == -1) {
+                 if (grid[nr][nc].isValueInDomain(value)) {
+                     grid[nr][nc].updateDomain(value, false); prunedList.add(new int[]{nr, nc, value});
+                     consistencyCounter++; if (grid[nr][nc].isDomainEmpty()) return null;
+                 }
+            }
+        }
+        // 3- Sum Constraint
+        int otherRow = 1 - r;
+        if (grid[otherRow][c].getValue() == -1) {
+             int requiredSum = grid[2][c].getValue(); int neededValue = requiredSum - value;
+             if (neededValue >= 0 && neededValue <= 9) {
+                 for (int v = 0; v < 10; v++) {
+                     if (v != neededValue && grid[otherRow][c].isValueInDomain(v)) {
+                         grid[otherRow][c].updateDomain(v, false); prunedList.add(new int[]{otherRow, c, v});
+                         consistencyCounter++;
+                     }
+                 }
+                  if (grid[otherRow][c].isDomainEmpty()) return null;
+             } else {
+                 return null; 
+             }
+
+              if (grid[otherRow][c].isValueInDomain(value)) {
+                  grid[otherRow][c].updateDomain(value, false); prunedList.add(new int[]{otherRow, c, value});
+                  consistencyCounter++; if (grid[otherRow][c].isDomainEmpty()) return null;
+             }
+        }
+        return prunedList;
+    }
+
+    private void restoreDomains(List<int[]> prunedList) {
+         if (prunedList == null) return;
+         for (int[] prune : prunedList) {
+             int r = prune[0]; int c = prune[1]; int restoredValue = prune[2];
+             if (grid[r][c].getValue() == -1) { 
+                 grid[r][c].updateDomain(restoredValue, true);
+             }
          }
-     }
- 
- 
- 
- 
- }//ForwardCheckingMRV Class
+    }
+
+    private boolean isAssignmentComplete() {
+        for (int i = 0; i < 2; i++) {
+            for (int j = 0; j < 10; j++) {
+                if (grid[i][j].getValue() == -1) return false;
+            }
+        }
+        return true;
+    }
+
+}
