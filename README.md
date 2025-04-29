@@ -3,7 +3,7 @@
 ## Description
 
 This project implements a solver for the "Tenner Grid" logic puzzle using constraint satisfaction problem (CSP) techniques in Java. The Tenner Grid puzzle involves filling a grid (typically 2 rows by 10 columns, plus a sum row) with digits 0-9 subject to several constraints:
-
+ 
 1.  **Row Uniqueness:** Digits in each row must be unique.
 2.  **Adjacent Cell Uniqueness:** Cells that touch (including diagonally) must contain different digits.
 3.  **Column Sum:** The sum of the digits in each column must equal a pre-defined value specified in a sum row.
